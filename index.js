@@ -149,7 +149,7 @@ function runChromeDevTools(context) {
 
   var data = fs.readFileSync(AUDIT_FILE, 'utf-8');
   data = data + ' var configuration = new axs.AuditConfiguration(' + JSON.stringify(context.config.chromeA11YDevTools.auditConfiguration) + '); return axs.Audit.run(configuration);';
-
+	
   var elementPromises = [],
       elementStringLength = 200;
 
@@ -225,7 +225,10 @@ function runChromeDevTools(context) {
         }
       });
     });
-  });
+  }).catch(function(err) {
+      console.error(err);
+      context.addFailure({specName: testHeader});
+  })
 }
 
 // Export
