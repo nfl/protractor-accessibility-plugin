@@ -246,8 +246,10 @@ function runChromeDevTools(context) {
 function runAxe(context) {
 
   var deferred = q.defer();
+  var options = Object.assign({}, context.config.axe.config);
 
   AxeBuilder(browser.driver)
+    .configure(options)
     .analyze(function(results) {
       deferred.resolve(results);
     });
