@@ -3,6 +3,7 @@ var q = require('q'),
     path = require('path'),
     _ = require('lodash'),
     request = require('request'),
+    AxeBuilder = require('axe-webdriverjs'),
     Entities = require('html-entities').XmlEntities;
 
 /**
@@ -56,6 +57,10 @@ var TENON_URL = 'http://www.tenon.io/api/';
 function teardown() {
 
   var audits = [];
+
+  if (this.config.axe) {
+    audits.push(runAxe(this));
+  }
 
   if (this.config.chromeA11YDevTools) {
     audits.push(runChromeDevTools(this));
@@ -149,7 +154,7 @@ function runChromeDevTools(context) {
 
   var data = fs.readFileSync(AUDIT_FILE, 'utf-8');
   data = data + ' var configuration = new axs.AuditConfiguration(' + JSON.stringify(context.config.chromeA11YDevTools.auditConfiguration) + '); return axs.Audit.run(configuration);';
-	
+
   var elementPromises = [],
       elementStringLength = 200;
 
@@ -164,7 +169,7 @@ function runChromeDevTools(context) {
 
   var testHeader = 'Chrome A11Y - ';
 
-  return browser.executeScript_(data, 'a11y developer tool rules').then(function(results) {
+  return browser.executeScriptWithDescription(data, 'a11y developer tool rules').then(function(results) {
 
     var audit = results.map(function(result) {
       var DOMElements = result.elements;
@@ -229,6 +234,53 @@ function runChromeDevTools(context) {
       console.error(err);
       context.addFailure({specName: testHeader});
   })
+}
+
+/**
+ * Audits page source against aXe: https://github.com/dequelabs/axe-core
+ *
+ * @param {Object} context The plugin context object
+ * @return {q.Promise} A promise which resolves when the audit is finished
+ * @private
+ */
+function runAxe(context) {
+
+  var deferred = q.defer();
+
+  AxeBuilder(browser.driver)
+    .analyze(function(results) {
+      deferred.resolve(results);
+    });
+
+  return deferred.promise.then(function(results) {
+    return processAxeResults(results);
+  });
+
+  function processAxeResults(results) {
+
+    var testHeader = 'aXe - '
+
+    var numResults = results.violations.length;
+
+    if (numResults === 0) {
+      return context.addSuccess();
+    }
+
+    results.passes.forEach(function(result) {
+      context.addSuccess({specName: testHeader + result.help});
+    });
+
+    return results.violations.forEach(function(result) {
+      var label = result.nodes.length === 1 ? ' element ' : ' elements ';
+      var msg = result.nodes.reduce(function(msg, node) {
+        return msg + '\t\t' + node.html + '\n';
+      }, '\n');
+      msg = '\n\t\t' + result.nodes.length + label + 'failed:' + msg + '\n\n\t\t' + result.helpUrl
+      context.addFailure(msg, {specName: testHeader + result.help});
+    });
+
+  }
+
 }
 
 // Export
