@@ -247,19 +247,17 @@ function runAxe(context) {
 
   var deferred = q.defer();
 
-  let ab = AxeBuilder(browser.driver);
+  let ab = AxeBuilder(browser.driver)
+    .options(context.config.axe)
 
-  if (context.config.axe.options) {
+  if (context.config.axe.exclude) {
     ab
-      .include(context.config.axe.options.include)
-      .exclude(context.config.axe.options.exclude)
-      .options(context.config.axe)
+      .exclude(context.config.axe.exclude)
       .analyze(function(results) {
         deferred.resolve(results);
       });
   } else {
-    AxeBuilder(browser.driver)
-      .options(context.config.axe)
+    ab
       .analyze(function(results) {
         deferred.resolve(results);
       });  
