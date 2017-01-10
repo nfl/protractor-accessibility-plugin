@@ -246,13 +246,24 @@ function runChromeDevTools(context) {
 function runAxe(context) {
 
   var deferred = q.defer();
-  var options = Object.assign({}, context.config.axe.config);
 
-  AxeBuilder(browser.driver)
-    .configure(options)
-    .analyze(function(results) {
-      deferred.resolve(results);
-    });
+  let ab = AxeBuilder(browser.driver);
+
+  if (context.config.axe.options) {
+    ab
+      .include(context.config.axe.options.include)
+      .exclude(context.config.axe.options.exclude)
+      .options(context.config.axe)
+      .analyze(function(results) {
+        deferred.resolve(results);
+      });
+  } else {
+    AxeBuilder(browser.driver)
+      .options(context.config.axe)
+      .analyze(function(results) {
+        deferred.resolve(results);
+      });  
+  }
 
   return deferred.promise.then(function(results) {
     return processAxeResults(results);
